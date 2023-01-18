@@ -15,14 +15,6 @@ func SetCpuRoutes(group *gin.RouterGroup) {
 
 	componentCpuGroup.GET("/:Id", repo.GetOneComponentCPU)
 
-	manufactureCpuGroup := group.Group("/Cpu-Manufacture")
-
-	manufactureCpuGroup.POST("/", repo.CreateManufactureCPU)
-
-	manufactureCpuGroup.GET("/", repo.GetAllManufactureCPU)
-
-	manufactureCpuGroup.GET("/:Id", repo.RoutingGetOneManufactureCPU)
-
 	seriesCpuGroup := group.Group("/Cpu-SeriesCpu")
 
 	seriesCpuGroup.POST("/", repo.CreateSeriesCPU)

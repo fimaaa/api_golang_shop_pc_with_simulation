@@ -53,8 +53,6 @@ func RoutingCreateRAM(c *gin.Context) {
 		}
 	}
 
-	fmt.Println("Checking", checking)
-
 	// Convertin Body to Map String to Check value exist or not
 	// checking, err := helper.ConvertBodyToMap(c.Request.Body)
 	// if err != nil || checking == nil {
@@ -86,9 +84,9 @@ func RoutingCreateRAM(c *gin.Context) {
 		fmt.Println("Memory RAM not Found")
 		return
 	}
-	postPayload.MemoryRAMData = *memoryRAM
+	postPayload.MemoryRAMData = memoryRAM
 
-	manufactureRAM := GetOneManufacture(ctx, postPayload.ManufactureId)
+	manufactureRAM := GetOneManufacture(postPayload.ManufactureId)
 	if manufactureRAM == nil {
 		errorCode := http.StatusBadRequest
 		c.JSON(errorCode, response.GetResponseError(errorCode))
@@ -97,7 +95,7 @@ func RoutingCreateRAM(c *gin.Context) {
 	}
 	postPayload.ManufactureData = *manufactureRAM
 
-	componentRAM := GetOneComponent(ctx, postPayload.ComponentDataId)
+	componentRAM := GetOneComponent(postPayload.ComponentDataId)
 	if componentRAM == nil {
 		errorCode := http.StatusBadRequest
 		c.JSON(errorCode, response.GetResponseError(errorCode))
@@ -443,15 +441,15 @@ func RoutingGetAllRAM(c *gin.Context) {
 
 		memoryRAM := GetOneMemoryRAM(ctx, elem.MemoryRAMId)
 		if memoryRAM != nil {
-			elem.MemoryRAMData = *memoryRAM
+			elem.MemoryRAMData = memoryRAM
 		}
 
-		manufactureRAM := GetOneManufacture(ctx, elem.ManufactureId)
+		manufactureRAM := GetOneManufacture(elem.ManufactureId)
 		if manufactureRAM != nil {
 			elem.ManufactureData = *manufactureRAM
 		}
 
-		componentRAM := GetOneComponent(ctx, elem.ComponentDataId)
+		componentRAM := GetOneComponent(elem.ComponentDataId)
 		if componentRAM != nil {
 			elem.ComponentData = *componentRAM
 		}
@@ -503,6 +501,7 @@ func RoutingGetOneRAM(c *gin.Context) {
 		c.JSON(errorCode, response.GetResponseError(errorCode))
 		return
 	}
+	helper.PrintCommand("StatusOK url", result)
 	c.JSON(http.StatusOK, response.GetResponseSuccess(result))
 }
 

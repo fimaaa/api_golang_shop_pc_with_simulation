@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	getcollection "other/simulasi_pc/Collection"
@@ -9,6 +10,8 @@ import (
 	"other/simulasi_pc/helper"
 	response "other/simulasi_pc/model/common"
 	model "other/simulasi_pc/model/component"
+	"path/filepath"
+	"pc_simulation_api/conf"
 
 	"time"
 
@@ -23,21 +26,29 @@ func GetComponentCPUCollectionName() string {
 }
 
 func CreateComponentCPU(c *gin.Context) {
-	post := new(model.ComponentCPU)
-	if err := c.BindJSON(&post); err != nil {
+	// post := new(model.ComponentCPU)
+	// if err := c.BindJSON(&post); err != nil {
+	// 	errorCode := http.StatusBadRequest
+	// 	c.JSON(errorCode, response.GetResponseError(errorCode))
+	// 	fmt.Println("BindError CreateComponentCPU", err)
+	// 	return
+	// }
+
+	_, multipartFileHeader, err := c.Request.FormFile("file")
+
+	if err := c.Request.ParseForm(); err != nil {
+		// handle error
 		errorCode := http.StatusBadRequest
 		c.JSON(errorCode, response.GetResponseError(errorCode))
-		fmt.Println("BindError CreateComponentCPU", err)
+		fmt.Println("err Map To Object => ", err)
 		return
 	}
 
-	// Convertin Body to Map String to Check value exist or not
-	checking, err := helper.ConvertBodyToMap(c.Request.Body)
-	if err != nil || checking == nil {
-		errorCode := http.StatusBadRequest
-		c.JSON(errorCode, response.GetResponseError(errorCode))
-		fmt.Println("err convert Body To Map Request Empty ")
-		return
+	checking := make(map[string]interface{})
+	for key, values := range c.Request.PostForm {
+		if key != "file" {
+			checking[key] = values
+		}
 	}
 
 	if !checkingRequestCreateCPU(checking) {
@@ -55,14 +66,14 @@ func CreateComponentCPU(c *gin.Context) {
 		return
 	}
 
-	manufactureCPU := GetOneManufactureCPU(postPayload.ManufactureCPUId)
+	manufactureCPU := GetOneManufacture(postPayload.ManufactureId)
 	if manufactureCPU == nil {
 		errorCode := http.StatusBadRequest
 		c.JSON(errorCode, response.GetResponseError(errorCode))
 		fmt.Println("manufactureCPU not Found")
 		return
 	}
-	postPayload.ManufactureCPUData = *manufactureCPU
+	postPayload.ManufactureData = manufactureCPU
 
 	seriesCPU := GetOneSeriesCPU(postPayload.SeriesCPUId)
 	if manufactureCPU == nil {
@@ -71,7 +82,7 @@ func CreateComponentCPU(c *gin.Context) {
 		fmt.Println("manufactureCPU not Found")
 		return
 	}
-	postPayload.SeriesCPUData = *seriesCPU
+	postPayload.SeriesCPUData = seriesCPU
 
 	microArchitectureCPU := GetOneCPUMicroArchitecture(postPayload.MicroArchitectureId)
 	if manufactureCPU == nil {
@@ -80,7 +91,7 @@ func CreateComponentCPU(c *gin.Context) {
 		fmt.Println("manufactureCPU not Found")
 		return
 	}
-	postPayload.MicroArchitectureData = *microArchitectureCPU
+	postPayload.MicroArchitectureData = microArchitectureCPU
 
 	coreFamilyCPU := GetOneCoreFamily(postPayload.CoreFamilyId)
 	if manufactureCPU == nil {
@@ -89,7 +100,7 @@ func CreateComponentCPU(c *gin.Context) {
 		fmt.Println("manufactureCPU not Found")
 		return
 	}
-	postPayload.CoreFamilyData = *coreFamilyCPU
+	postPayload.CoreFamilyData = coreFamilyCPU
 
 	cpuSocket := GetOneCPUSocket(postPayload.SocketCPUId)
 	if manufactureCPU == nil {
@@ -98,7 +109,7 @@ func CreateComponentCPU(c *gin.Context) {
 		fmt.Println("manufactureCPU not Found")
 		return
 	}
-	postPayload.SocketCPUData = *cpuSocket
+	postPayload.SocketCPUData = cpuSocket
 
 	integratedGraphicCpu := GetOneIntegratedGraphic(postPayload.IntegratedGrpahicId)
 	if manufactureCPU == nil {
@@ -107,7 +118,25 @@ func CreateComponentCPU(c *gin.Context) {
 		fmt.Println("manufactureCPU not Found")
 		return
 	}
-	postPayload.IntegratedGrpahicData = *integratedGraphicCpu
+	postPayload.IntegratedGrpahicData = integratedGraphicCpu
+
+	var localTargetFilePath string
+
+	if len(postPayload.CommonComponentData.ImageProduct) <= 0 {
+		fmt.Println("file size")
+		fmt.Println(multipartFileHeader.Size)
+		extension := filepath.Ext(multipartFileHeader.Filename)
+		newFileName := primitive.NewObjectID().Hex() + extension
+		localTargetFilePath = "stored-image/mobo/" + newFileName
+
+		if err := c.SaveUploadedFile(multipartFileHeader, localTargetFilePath); err != nil {
+			errorCode := http.StatusBadRequest
+			c.JSON(errorCode, response.GetResponseError(errorCode))
+			fmt.Println("Error SaveUploadedFile => ", err.Error())
+			return
+		}
+		postPayload.CommonComponentData.ImageProduct = conf.Configuration().Server.BaseUrl + "/img/mobo/" + newFileName
+	}
 
 	update := bson.D{{Key: "$set", Value: postPayload}}
 	filter := bson.D{{Key: "component_data_common.product_name", Value: postPayload.CommonComponentData.NameProduct}}
@@ -152,14 +181,37 @@ func checkingRequestCreateCPU(checking map[string]interface{}) bool {
 		return false
 	}
 
-	// Cheked Common Component
-	// checkingCommonData := map[string]interface{}{}
-	mapCommonData := checking["component_data_common"].(map[string]interface{})
+	// // Cheked Common Component
+	// // checkingCommonData := map[string]interface{}{}
+	// mapCommonData := checking["component_data_common"].(map[string]interface{})
+
+	// if _, ok := checking["component_data_common"]; !ok {
+	// 	return false
+	// }
+
+	// if checked, name := helper.CheckingSettingRequest(
+	// 	[]string{
+	// 		"product_name",
+	// 		"product_image",
+	// 		"component_data",
+	// 		"shop_info",
+	// 	},
+	// 	mapCommonData,
+	// ); !checked {
+	// 	fmt.Println("Requested Data not Here ", name)
+	// 	return false
+	// }
 
 	if _, ok := checking["component_data_common"]; !ok {
+		//do something here
 		return false
 	}
-
+	var sec map[string]interface{}
+	errCommon := json.Unmarshal([]byte(checking["component_data_common"].([]string)[0]), &sec)
+	if errCommon != nil {
+		fmt.Println("Errcommon => ", errCommon)
+		return false
+	}
 	if checked, name := helper.CheckingSettingRequest(
 		[]string{
 			"product_name",
@@ -167,7 +219,7 @@ func checkingRequestCreateCPU(checking map[string]interface{}) bool {
 			"component_data",
 			"shop_info",
 		},
-		mapCommonData,
+		sec,
 	); !checked {
 		fmt.Println("Requested Data not Here ", name)
 		return false
@@ -181,12 +233,63 @@ func GetAllComponentCPU(c *gin.Context) {
 	code, results, pagination, err := CommonGetAllCollection(bson.D{}, GetComponentCPUCollectionName())
 
 	fmt.Println("code", code, " _ Reuslts => ", results)
+	helper.PrintCommand("==============================", len(results))
+	helper.PrintCommand("==============================")
+
+	var listCPU []model.ComponentCPU
+	for _, element := range results {
+		var value model.ComponentCPU
+		bsonBytes, _ := bson.Marshal(element)
+		err := bson.Unmarshal(bsonBytes, &value)
+		if err != nil {
+			continue
+		}
+
+		componentData := GetOneComponent(value.ComponentDataId)
+		if componentData != nil {
+			value.ComponentData = *componentData
+		}
+
+		manufactureData := GetOneManufacture(value.ManufactureId)
+		if manufactureData != nil {
+			value.ManufactureData = manufactureData
+		}
+
+		cpuSeriesData := GetOneSeriesCPU(value.SeriesCPUId)
+		if manufactureData != nil {
+			value.SeriesCPUData = cpuSeriesData
+		}
+
+		cpuMicroArchData := GetOneCPUMicroArchitecture(value.MicroArchitectureId)
+		if manufactureData != nil {
+			value.MicroArchitectureData = cpuMicroArchData
+		}
+
+		cpuCoreFamilyData := GetOneCoreFamily(value.CoreFamilyId)
+		if manufactureData != nil {
+			value.CoreFamilyData = cpuCoreFamilyData
+		}
+
+		cpuSocketData := GetOneCPUSocket(value.SocketCPUId)
+		if manufactureData != nil {
+			value.SocketCPUData = cpuSocketData
+		}
+
+		cpuIntegratedGraphData := GetOneIntegratedGraphic(value.IntegratedGrpahicId)
+		if manufactureData != nil {
+			value.IntegratedGrpahicData = cpuIntegratedGraphData
+		}
+
+		listCPU = append(listCPU, value)
+	}
 
 	if err != nil {
 		c.JSON(code, response.GetResponseError(code))
 		return
 	}
-	c.JSON(http.StatusOK, response.GetListResponseSuccess(results, len(results) <= 0, *pagination))
+
+	helper.PrintCommand("TAG ALLCOMPNENT => ", listCPU)
+	c.JSON(http.StatusOK, response.GetListResponseSuccess(listCPU, len(listCPU) <= 0, *pagination))
 
 }
 
@@ -201,85 +304,6 @@ func GetOneComponentCPU(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, response.GetResponseSuccess(results))
-}
-
-func GetManufactureCPUCollectionName() string {
-	return "ManufactureCPUCollection"
-}
-
-func CreateManufactureCPU(c *gin.Context) {
-	post := new(model.MicroArchitecture)
-	if err := c.BindJSON(&post); err != nil {
-		errorCode := http.StatusBadRequest
-		c.JSON(errorCode, response.GetResponseError(errorCode))
-		fmt.Println("BindError CreateManufactureCPU", err)
-		return
-	}
-
-	ID := primitive.NewObjectID()
-	postPayload := model.MicroArchitecture{
-		ID:   ID,
-		Name: post.Name,
-	}
-
-	update := bson.D{{Key: "$set", Value: postPayload}}
-	filter := bson.D{{Key: "name", Value: post.Name}}
-	opts := options.Update().SetUpsert(true)
-
-	code, _, err := CommonCreateCollection(
-		update,
-		filter,
-		opts,
-		GetManufactureCPUCollectionName(),
-	)
-
-	if err != nil {
-		c.JSON(code, response.GetResponseError(code))
-		return
-	}
-	c.JSON(http.StatusCreated, response.GetResponseSuccess(postPayload))
-
-}
-
-func GetAllManufactureCPU(c *gin.Context) {
-	// postId := c.Param("postId")
-
-	code, results, pagination, err := CommonGetAllCollection(bson.D{}, GetManufactureCPUCollectionName())
-
-	fmt.Println("code", code, " _ Reuslts => ", results)
-
-	if err != nil {
-		c.JSON(code, response.GetResponseError(code))
-		return
-	}
-	c.JSON(http.StatusOK, response.GetListResponseSuccess(results, len(results) <= 0, *pagination))
-}
-
-func RoutingGetOneManufactureCPU(c *gin.Context) {
-	postId := c.Param("Id")
-
-	result := GetOneManufactureCPU(postId)
-
-	if result == nil {
-		errorCode := http.StatusInternalServerError
-		c.JSON(errorCode, response.GetResponseError(errorCode))
-		return
-	}
-	c.JSON(http.StatusOK, response.GetResponseSuccess(result))
-
-}
-
-func GetOneManufactureCPU(id string) *model.ManufactureCPU {
-	objId, _ := primitive.ObjectIDFromHex(id)
-	_, results, err := CommonGetOneCollection(bson.M{"_id": objId}, GetManufactureCPUCollectionName())
-	if err == nil {
-		return nil
-	}
-	url, ok := results.(model.ManufactureCPU)
-	if !ok {
-		return nil
-	}
-	return &url
 }
 
 func GetCpuMicroArchitectureCollectionName() string {
@@ -351,14 +375,14 @@ func RoutingGetOneCoyMicroArchitecture(c *gin.Context) {
 func GetOneCPUMicroArchitecture(id string) *model.MicroArchitecture {
 	objId, _ := primitive.ObjectIDFromHex(id)
 	_, results, err := CommonGetOneCollection(bson.M{"_id": objId}, GetCpuMicroArchitectureCollectionName())
-	if err == nil {
+	if err != nil {
 		return nil
 	}
-	url, ok := results.(model.MicroArchitecture)
-	if !ok {
-		return nil
-	}
-	return &url
+	var result model.MicroArchitecture
+	result.ID = results["_id"].(primitive.ObjectID)
+	result.Name = results["name"].(string)
+
+	return &result
 }
 
 func GetSeriesCPUCollectionName() string {
@@ -431,14 +455,15 @@ func RoutingGetOneSeriesCPU(c *gin.Context) {
 func GetOneSeriesCPU(id string) *model.SeriesCPU {
 	objId, _ := primitive.ObjectIDFromHex(id)
 	_, results, err := CommonGetOneCollection(bson.M{"_id": objId}, GetSeriesCPUCollectionName())
-	if err == nil {
+	if err != nil {
+		helper.PrintCommand("GetOneSeriesCPU err => ", err, " - ID => ", id)
 		return nil
 	}
-	url, ok := results.(model.SeriesCPU)
-	if !ok {
-		return nil
-	}
-	return &url
+	var result model.SeriesCPU
+	result.ID = results["_id"].(primitive.ObjectID)
+	result.Name = results["name"].(string)
+
+	return &result
 }
 
 func GetCoreFamilyCollectionName() string {
@@ -509,14 +534,14 @@ func RoutingGetOneCoreFamily(c *gin.Context) {
 func GetOneCoreFamily(id string) *model.CoreFamily {
 	objId, _ := primitive.ObjectIDFromHex(id)
 	_, results, err := CommonGetOneCollection(bson.M{"_id": objId}, GetCoreFamilyCollectionName())
-	if err == nil {
+	if err != nil {
 		return nil
 	}
-	url, ok := results.(model.CoreFamily)
-	if !ok {
-		return nil
-	}
-	return &url
+	var result model.CoreFamily
+	result.ID = results["_id"].(primitive.ObjectID)
+	result.Name = results["name"].(string)
+
+	return &result
 }
 
 func GetCPUSocketCollectionName() string {
@@ -622,14 +647,14 @@ func RoutingGetOneCPUSocket(c *gin.Context) {
 func GetOneCPUSocket(id string) *model.CPUSocket {
 	objId, _ := primitive.ObjectIDFromHex(id)
 	_, results, err := CommonGetOneCollection(bson.M{"_id": objId}, GetCPUSocketCollectionName())
-	if err == nil {
+	if err != nil {
 		return nil
 	}
-	url, ok := results.(model.CPUSocket)
-	if !ok {
-		return nil
-	}
-	return &url
+	var result model.CPUSocket
+	result.ID = results["_id"].(primitive.ObjectID)
+	result.Name = results["name"].(string)
+
+	return &result
 }
 
 func GetIntegratedGraphicCollectionName() string {
@@ -735,12 +760,12 @@ func RoutingGetOneIntegratedGraphic(c *gin.Context) {
 func GetOneIntegratedGraphic(id string) *model.IntegratedGraphic {
 	objId, _ := primitive.ObjectIDFromHex(id)
 	_, results, err := CommonGetOneCollection(bson.M{"_id": objId}, GetIntegratedGraphicCollectionName())
-	if err == nil {
+	if err != nil {
 		return nil
 	}
-	url, ok := results.(model.IntegratedGraphic)
-	if !ok {
-		return nil
-	}
-	return &url
+	var result model.IntegratedGraphic
+	result.ID = results["_id"].(primitive.ObjectID)
+	result.Name = results["name"].(string)
+
+	return &result
 }

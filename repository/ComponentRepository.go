@@ -8,6 +8,7 @@ import (
 	database "other/simulasi_pc/database"
 	response "other/simulasi_pc/model/common"
 	model "other/simulasi_pc/model/component"
+	"pc_simulation_api/helper"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -103,13 +104,8 @@ func GetAllComponent(c *gin.Context) {
 }
 
 func RoutingGetOneComponent(c *gin.Context) {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-
 	postId := c.Param("Id")
-	var result *model.ComponentData
-	defer cancel()
-
-	result = GetOneComponent(ctx, postId)
+	result := GetOneComponent(postId)
 	if result == nil {
 		errorCode := http.StatusInternalServerError
 		c.JSON(errorCode, response.GetResponseError(errorCode))
@@ -118,15 +114,21 @@ func RoutingGetOneComponent(c *gin.Context) {
 	c.JSON(http.StatusOK, response.GetResponseSuccess(result))
 }
 
-func GetOneComponent(ctx context.Context, id string) *model.ComponentData {
-	var DB = database.ConnectDB()
-	var postCollection = getcollection.GetCollection(DB, GetComponentCollectionName())
+func GetOneComponent(id string) *model.ComponentData {
+	objId, _ := primitive.ObjectIDFromHex(id)
+
+	_, results, err := CommonGetOneCollection(bson.M{"_id": objId}, GetComponentCollectionName())
+	if err != nil {
+		helper.PrintCommand("GetOneComponent error => ", err)
+		return nil
+	}
 
 	var result model.ComponentData
-	objId, _ := primitive.ObjectIDFromHex(id)
-	err := postCollection.FindOne(ctx, bson.M{"_id": objId}).Decode(&result)
+	bsonBytes, _ := bson.Marshal(results)
+	err = bson.Unmarshal(bsonBytes, &result)
 	if err != nil {
 		return nil
 	}
+
 	return &result
 }

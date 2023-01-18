@@ -6,8 +6,8 @@ import (
 	"other/simulasi_pc/conf"
 )
 
-func PrintCommand(command string) {
+func PrintCommand(command ...any) {
 	if conf.Configuration().Log.Verbose {
-		fmt.Println(command)
+		fmt.Println(command...)
 	}
 }

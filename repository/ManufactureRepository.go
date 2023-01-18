@@ -10,6 +10,7 @@ import (
 	database "other/simulasi_pc/database"
 	response "other/simulasi_pc/model/common"
 	model "other/simulasi_pc/model/manufacture"
+	"pc_simulation_api/helper"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -41,6 +42,7 @@ func CreateManufacture(c *gin.Context) {
 		NameManufacture: post.NameManufacture,
 		IsRAM:           post.IsRAM,
 		IsMotherboard:   post.IsMotherboard,
+		IsCPU:           post.IsCPU,
 	}
 	update := bson.D{{Key: "$set", Value: postPayload}}
 	filter := bson.D{{Key: "name_manufacture", Value: post.NameManufacture}}
@@ -115,11 +117,8 @@ func GetAllManufacture(c *gin.Context) {
 }
 
 func RoutingGetOneManufacture(c *gin.Context) {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
 	postId := c.Param("Id")
-	result := GetOneManufacture(ctx, postId)
+	result := GetOneManufacture(postId)
 
 	if result == nil {
 		errorCode := http.StatusInternalServerError
@@ -131,16 +130,36 @@ func RoutingGetOneManufacture(c *gin.Context) {
 	c.JSON(http.StatusOK, response.GetResponseSuccess(result))
 }
 
-func GetOneManufacture(ctx context.Context, id string) *model.ManufactureData {
-	var DB = database.ConnectDB()
-	var postCollection = getcollection.GetCollection(DB, GetManufactureCollectionName())
-
-	var result model.ManufactureData
+func GetOneManufacture(id string) *model.ManufactureData {
 	objId, _ := primitive.ObjectIDFromHex(id)
-	err := postCollection.FindOne(ctx, bson.M{"_id": objId}).Decode(&result)
+	_, results, err := CommonGetOneCollection(bson.M{"_id": objId}, GetManufactureCollectionName())
 	if err != nil {
+		helper.PrintCommand("GetOneManufacture err1 => ", err)
 		return nil
 	}
+
+	helper.PrintCommand("RESULTS = > ", results)
+
+	var result model.ManufactureData
+	result.ID = results["_id"].(primitive.ObjectID)
+	result.NameManufacture = results["name_manufacture"].(string)
+
+	result.IsMotherboard = false
+	if value, ok := results["is_motherboard"].(bool); ok {
+		result.IsMotherboard = value
+	}
+
+	result.IsRAM = false
+	if value, ok := results["is_ram"].(bool); ok {
+		result.IsRAM = value
+
+	}
+
+	result.IsCPU = false
+	if value, ok := results["is_cpu"].(bool); ok {
+		result.IsCPU = value
+	}
+
 	return &result
 }
 

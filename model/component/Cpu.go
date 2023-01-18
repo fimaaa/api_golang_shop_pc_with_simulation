@@ -1,37 +1,36 @@
 package component
 
 import (
+	"encoding/json"
+	"pc_simulation_api/helper"
+
 	"go.mongodb.org/mongo-driver/bson/primitive"
 
+	"other/simulasi_pc/model/manufacture"
 	modelShop "other/simulasi_pc/model/shop"
 )
 
 type ComponentCPU struct {
-	ID                    primitive.ObjectID `bson:"_id" json:"id"`
-	ManufactureCPUId      string             `bson:"cpu_manufacture" json:"-"`
-	ManufactureCPUData    ManufactureCPU     `bson:"-" json:"cpu_manufacture"`
-	CoreCount             int                `bson:"core_count" json:"core_count"`
-	PerfromanceCoreClock  float64            `bson:"core_cloack_performance" json:"core_cloack_performance"`
-	TDP                   int                `bson:"tdp" json:"tdp"`
-	SeriesCPUId           string             `bson:"cpu_series" json:"-"`
-	SeriesCPUData         SeriesCPU          `bson:"-" json:"cpu_series"`
-	MicroArchitectureId   string             `bson:"cpu_microarchitecture" json:"-"`
-	MicroArchitectureData MicroArchitecture  `bson:"-" json:"cpu_microarchitecture"`
-	CoreFamilyId          string             `bson:"cpu_core_family" json:"-"`
-	CoreFamilyData        CoreFamily         `bson:"-" json:"cpu_core_family"`
-	SocketCPUId           string             `bson:"cpu_socket" json:"-"`
-	SocketCPUData         CPUSocket          `bson:"-" json:"cpu_socket"`
-	IntegratedGrpahicId   string             `bson:"cpu_integrated_graphic" json:"-"`
-	IntegratedGrpahicData IntegratedGraphic  `bson:"-" json:"cpu_integrated_graphic"`
-	IsSMT                 bool               `bson:"is_smt" json:"is_smt"`
-	IsECC                 bool               `bson:"is_ecc" json:"is_ecc"`
-	IsIncludeCooler       bool               `bson:"is_include_cooler" json:"is_include_cooler"`
+	ID                    primitive.ObjectID           `bson:"_id" json:"id"`
+	ManufactureId         string                       `bson:"manufacture" json:"-"`
+	ManufactureData       *manufacture.ManufactureData `bson:"-" json:"manufacture"`
+	CoreCount             int                          `bson:"core_count" json:"core_count"`
+	PerfromanceCoreClock  float64                      `bson:"core_cloack_performance" json:"core_cloack_performance"`
+	TDP                   int                          `bson:"tdp" json:"tdp"`
+	SeriesCPUId           string                       `bson:"cpu_series" json:"-"`
+	SeriesCPUData         *SeriesCPU                   `bson:"-" json:"cpu_series"`
+	MicroArchitectureId   string                       `bson:"cpu_microarchitecture" json:"-"`
+	MicroArchitectureData *MicroArchitecture           `bson:"-" json:"cpu_microarchitecture"`
+	CoreFamilyId          string                       `bson:"cpu_core_family" json:"-"`
+	CoreFamilyData        *CoreFamily                  `bson:"-" json:"cpu_core_family"`
+	SocketCPUId           string                       `bson:"cpu_socket" json:"-"`
+	SocketCPUData         *CPUSocket                   `bson:"-" json:"cpu_socket"`
+	IntegratedGrpahicId   string                       `bson:"cpu_integrated_graphic" json:"-"`
+	IntegratedGrpahicData *IntegratedGraphic           `bson:"-" json:"cpu_integrated_graphic"`
+	IsSMT                 bool                         `bson:"is_smt" json:"is_smt"`
+	IsECC                 bool                         `bson:"is_ecc" json:"is_ecc"`
+	IsIncludeCooler       bool                         `bson:"is_include_cooler" json:"is_include_cooler"`
 	CommonComponentData   `bson:"component_data_common" json:"component_data_common"`
-}
-
-type ManufactureCPU struct {
-	ID   primitive.ObjectID `bson:"_id" json:"id"`
-	Name string             `bson:"name" json:"name"`
 }
 
 type SeriesCPU struct {
@@ -60,7 +59,12 @@ type IntegratedGraphic struct {
 }
 
 func MapToComponentCPU(dataMap map[string]interface{}) *ComponentCPU {
-	mapCommonData := dataMap["component_data_common"].(map[string]interface{})
+	var mapCommonData map[string]interface{}
+	errCommon := json.Unmarshal([]byte(dataMap["component_data_common"].([]string)[0]), &mapCommonData)
+	if errCommon != nil {
+		helper.PrintCommand("Errcommon => ", errCommon)
+		return nil
+	}
 
 	mapShopInfo := mapCommonData["shop_info"].(map[string]interface{})
 
@@ -108,66 +112,57 @@ func MapToComponentCPU(dataMap map[string]interface{}) *ComponentCPU {
 		CommonShopInfo:  postShopInfo,
 	}
 
-	manufactureId, ok := dataMap["cpu_manufacture"].(string)
+	manufactureId, ok := dataMap["manufacture"].([]string)
 	if !ok {
 		return nil
 	}
-	coreCount, ok := dataMap["core_count"].(float64)
+	coreCount, ok := helper.FormDataToFloat64(dataMap["core_count"])
 	if !ok {
 		return nil
 	}
-	coreCloakPerformance, ok := dataMap["core_cloack_performance"].(float64)
+	coreCloakPerformance, ok := helper.FormDataToFloat64(dataMap["core_cloack_performance"])
 	if !ok {
 		return nil
 	}
-	tdp, ok := dataMap["tdp"].(float64)
+	tdp, ok := helper.FormDataToFloat64(dataMap["tdp"])
 	if !ok {
 		return nil
 	}
-	cpuSeries, ok := dataMap["cpu_series"].(string)
+	cpuSeries, ok := dataMap["cpu_series"].([]string)
 	if !ok {
 		return nil
 	}
-	microArchitecture, ok := dataMap["cpu_microarchitecture"].(string)
+	microArchitecture, ok := dataMap["cpu_microarchitecture"].([]string)
 	if !ok {
 		return nil
 	}
-	cpuCoreFamily, ok := dataMap["cpu_core_family"].(string)
+	cpuCoreFamily, ok := dataMap["cpu_core_family"].([]string)
 	if !ok {
 		return nil
 	}
-	cpuSocket, ok := dataMap["cpu_socket"].(string)
+	cpuSocket, ok := dataMap["cpu_socket"].([]string)
 	if !ok {
 		return nil
 	}
-	integratedGraphic, ok := dataMap["cpu_integrated_graphic"].(string)
+	integratedGraphic, ok := dataMap["cpu_integrated_graphic"].([]string)
 	if !ok {
 		return nil
 	}
-	isSmt, ok := dataMap["is_smt"].(bool)
-	if !ok {
-		return nil
-	}
-	isEcc, ok := dataMap["is_ecc"].(bool)
-	if !ok {
-		return nil
-	}
-	isIncludeCooler, ok := dataMap["is_include_cooler"].(bool)
-	if !ok {
-		return nil
-	}
+	isSmt := helper.FormDataToBool("is_smt")
+	isEcc := helper.FormDataToBool("is_ecc")
+	isIncludeCooler := helper.FormDataToBool("is_include_cooler")
 
 	postPayload := ComponentCPU{
 		ID:                   primitive.NewObjectID(),
-		ManufactureCPUId:     manufactureId,
+		ManufactureId:        manufactureId[0],
 		CoreCount:            int(coreCount),
 		PerfromanceCoreClock: coreCloakPerformance,
 		TDP:                  int(tdp),
-		SeriesCPUId:          cpuSeries,
-		MicroArchitectureId:  microArchitecture,
-		CoreFamilyId:         cpuCoreFamily,
-		SocketCPUId:          cpuSocket,
-		IntegratedGrpahicId:  integratedGraphic,
+		SeriesCPUId:          cpuSeries[0],
+		MicroArchitectureId:  microArchitecture[0],
+		CoreFamilyId:         cpuCoreFamily[0],
+		SocketCPUId:          cpuSocket[0],
+		IntegratedGrpahicId:  integratedGraphic[0],
 		IsSMT:                isSmt,
 		IsECC:                isEcc,
 		IsIncludeCooler:      isIncludeCooler,

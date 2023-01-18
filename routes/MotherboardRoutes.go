@@ -46,4 +46,12 @@ func SetMotherboardRoutes(group *gin.RouterGroup) {
 	onBoradWirelessGroup.GET("/", repo.GetAllOnBoardWirelessAdapter)
 
 	onBoradWirelessGroup.GET("/:Id", repo.RoutingGetOneOnBoardWirelessAdapter)
+
+	cpuChipsetGroup := group.Group("/cpu-chipset")
+
+	cpuChipsetGroup.POST("/", repo.CreateCPUChipset)
+
+	cpuChipsetGroup.GET("/", repo.GetAllCPUChipset)
+
+	cpuChipsetGroup.GET("/:Id", repo.RoutingGetOneCPUChipset)
 }

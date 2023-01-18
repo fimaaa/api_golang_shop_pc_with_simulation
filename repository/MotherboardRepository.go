@@ -10,6 +10,8 @@ import (
 	"other/simulasi_pc/helper"
 	response "other/simulasi_pc/model/common"
 	model "other/simulasi_pc/model/component"
+	"path/filepath"
+	"pc_simulation_api/conf"
 	"strconv"
 
 	"time"
@@ -31,14 +33,31 @@ func RoutingCreateComponentMotherboard(c *gin.Context) {
 
 	defer cancel()
 
-	// Convertin Body to Map String to Check value exist or not
-	checking, err := helper.ConvertBodyToMap(c.Request.Body)
-	if err != nil || checking == nil {
+	_, multipartFileHeader, err := c.Request.FormFile("file")
+
+	if err := c.Request.ParseForm(); err != nil {
+		// handle error
 		errorCode := http.StatusBadRequest
 		c.JSON(errorCode, response.GetResponseError(errorCode))
-		fmt.Println("err convert Body To Map Request Empty ")
+		fmt.Println("err Map To Object => ", err)
 		return
 	}
+
+	checking := make(map[string]interface{})
+	for key, values := range c.Request.PostForm {
+		if key != "file" {
+			checking[key] = values
+		}
+	}
+
+	// // Convertin Body to Map String to Check value exist or not
+	// checking, err := helper.ConvertBodyToMap(c.Request.Body)
+	// if err != nil || checking == nil {
+	// 	errorCode := http.StatusBadRequest
+	// 	c.JSON(errorCode, response.GetResponseError(errorCode))
+	// 	fmt.Println("err convert Body To Map Request Empty ")
+	// 	return
+	// }
 
 	if !checkingRequestCreateComponentMotherboard(checking) {
 		errorCode := http.StatusBadRequest
@@ -47,7 +66,7 @@ func RoutingCreateComponentMotherboard(c *gin.Context) {
 		return
 	}
 
-	postPayload := model.MapToComponentRAM(checking)
+	postPayload := model.MapToComponentComopnentMotherboard(checking)
 	if postPayload == nil {
 		errorCode := http.StatusBadRequest
 		c.JSON(errorCode, response.GetResponseError(errorCode))
@@ -62,18 +81,18 @@ func RoutingCreateComponentMotherboard(c *gin.Context) {
 		fmt.Println("Memory RAM not Found")
 		return
 	}
-	postPayload.MemoryRAMData = *memoryRAM
+	postPayload.MemoryRAMData = memoryRAM
 
-	manufactureRAM := GetOneManufacture(ctx, postPayload.ManufactureId)
+	manufactureRAM := GetOneManufacture(postPayload.ManufactureId)
 	if manufactureRAM == nil {
 		errorCode := http.StatusBadRequest
 		c.JSON(errorCode, response.GetResponseError(errorCode))
 		fmt.Println("Manufacture RAM not Found")
 		return
 	}
-	postPayload.ManufactureData = *manufactureRAM
+	postPayload.ManufactureData = manufactureRAM
 
-	componentRAM := GetOneComponent(ctx, postPayload.ComponentDataId)
+	componentRAM := GetOneComponent(postPayload.ComponentDataId)
 	if componentRAM == nil {
 		errorCode := http.StatusBadRequest
 		c.JSON(errorCode, response.GetResponseError(errorCode))
@@ -82,6 +101,15 @@ func RoutingCreateComponentMotherboard(c *gin.Context) {
 	}
 	postPayload.ComponentData = *componentRAM
 
+	chipsetCpu := GetOneCPUSocket(postPayload.ManufactureId)
+	if manufactureRAM == nil {
+		errorCode := http.StatusBadRequest
+		c.JSON(errorCode, response.GetResponseError(errorCode))
+		fmt.Println("Manufacture RAM not Found")
+		return
+	}
+	postPayload.SocketCPUData = chipsetCpu
+
 	if postPayload.CommonComponentData.ShopId != nil {
 		var shopId string
 		shopId = *postPayload.CommonComponentData.ShopId
@@ -89,6 +117,24 @@ func RoutingCreateComponentMotherboard(c *gin.Context) {
 		if shopRAM != nil {
 			postPayload.CommonComponentData.ShopData = shopRAM
 		}
+	}
+
+	var localTargetFilePath string
+
+	if len(postPayload.CommonComponentData.ImageProduct) <= 0 {
+		fmt.Println("file size")
+		fmt.Println(multipartFileHeader.Size)
+		extension := filepath.Ext(multipartFileHeader.Filename)
+		newFileName := primitive.NewObjectID().Hex() + extension
+		localTargetFilePath = "stored-image/mobo/" + newFileName
+
+		if err := c.SaveUploadedFile(multipartFileHeader, localTargetFilePath); err != nil {
+			errorCode := http.StatusBadRequest
+			c.JSON(errorCode, response.GetResponseError(errorCode))
+			fmt.Println("Error SaveUploadedFile => ", err.Error())
+			return
+		}
+		postPayload.CommonComponentData.ImageProduct = conf.Configuration().Server.BaseUrl + "/img/mobo/" + newFileName
 	}
 
 	update := bson.D{{Key: "$set", Value: postPayload}}
@@ -130,9 +176,9 @@ func checkingRequestCreateComponentMotherboard(checking map[string]interface{}) 
 			"slot_m_sata",
 			"onboard_video_status",
 			"usb_2_0_header",
-			"usb_2_gen_1_header",
-			"usb_2_gen_2_header",
-			"usb_2_gen_2x2_header",
+			"usb_3_gen_1_header",
+			"usb_3_gen_2_header",
+			"usb_3_gen_2x2_header",
 			"is_support_ecc",
 			"onboard_wired_adapter",
 			"onboard_wireless_adapter",
@@ -142,6 +188,7 @@ func checkingRequestCreateComponentMotherboard(checking map[string]interface{}) 
 			"memory_max",
 			"memory_slot",
 			"manufacture",
+			"component_data_common",
 		},
 		checking,
 	)
@@ -152,12 +199,35 @@ func checkingRequestCreateComponentMotherboard(checking map[string]interface{}) 
 
 	// Cheked Common Component
 	// checkingCommonData := map[string]interface{}{}
-	mapCommonData := checking["component_data_common"].(map[string]interface{})
+	// mapCommonData := checking["component_data_common"].(map[string]interface{})
+
+	// if _, ok := checking["component_data_common"]; !ok {
+	// 	return false
+	// }
+
+	// if checked, name := helper.CheckingSettingRequest(
+	// 	[]string{
+	// 		"product_name",
+	// 		"product_image",
+	// 		"component_data",
+	// 		"shop_info",
+	// 	},
+	// 	mapCommonData,
+	// ); !checked {
+	// 	fmt.Println("Requested Data not Here ", name)
+	// 	return false
+	// }
 
 	if _, ok := checking["component_data_common"]; !ok {
+		//do something here
 		return false
 	}
-
+	var sec map[string]interface{}
+	errCommon := json.Unmarshal([]byte(checking["component_data_common"].([]string)[0]), &sec)
+	if errCommon != nil {
+		fmt.Println("Errcommon => ", errCommon)
+		return false
+	}
 	if checked, name := helper.CheckingSettingRequest(
 		[]string{
 			"product_name",
@@ -165,7 +235,7 @@ func checkingRequestCreateComponentMotherboard(checking map[string]interface{}) 
 			"component_data",
 			"shop_info",
 		},
-		mapCommonData,
+		sec,
 	); !checked {
 		fmt.Println("Requested Data not Here ", name)
 		return false
@@ -346,9 +416,14 @@ func RoutingGetAllComponentMotherboard(c *gin.Context) {
 			fmt.Println("Element RAM GetAllComponentMotherboard", err)
 		}
 
-		formFactorMotherboard := GetOneFormFactorMotherboard(ctx, elem.MemoryRAMId)
+		formFactorMotherboard := GetOneFormFactorMotherboard(ctx, elem.FormFactorMotherboardId)
 		if formFactorMotherboard != nil {
-			elem.FormFactorMotherboardData = *formFactorMotherboard
+			elem.FormFactorMotherboardData = formFactorMotherboard
+		}
+
+		memoryRAM := GetOneMemoryRAM(ctx, elem.MemoryRAMId)
+		if memoryRAM != nil {
+			elem.MemoryRAMData = memoryRAM
 		}
 
 		var listMultiGPU []model.MultiGPU
@@ -361,22 +436,27 @@ func RoutingGetAllComponentMotherboard(c *gin.Context) {
 
 		onBoardWired := GetOneOnBoardWiredAdapter(ctx, elem.OnBoardWiredAdapterId)
 		if onBoardWired != nil {
-			elem.OnBoardWiredAdapterData = *onBoardWired
+			elem.OnBoardWiredAdapterData = onBoardWired
 		}
 
 		onBoradWireless := GetOneOnBoardWirelessAdapter(ctx, elem.OnBoardWirelessAdapterId)
 		if onBoradWireless != nil {
-			elem.OnBoardWirelessAdapterData = *onBoradWireless
+			elem.OnBoardWirelessAdapterData = onBoradWireless
 		}
 
-		manufactureMotherboard := GetOneManufacture(ctx, elem.ManufactureId)
+		manufactureMotherboard := GetOneManufacture(elem.ManufactureId)
 		if manufactureMotherboard != nil {
-			elem.ManufactureData = *manufactureMotherboard
+			elem.ManufactureData = manufactureMotherboard
 		}
 
-		componentRAM := GetOneComponent(ctx, elem.ComponentDataId)
+		componentRAM := GetOneComponent(elem.ComponentDataId)
 		if componentRAM != nil {
 			elem.ComponentData = *componentRAM
+		}
+
+		cpuChipset := GetOneCPUChipset(elem.ChipsetId)
+		if cpuChipset != nil {
+			elem.ChipsetData = cpuChipset
 		}
 
 		if elem.CommonComponentData.ShopId != nil {
@@ -890,5 +970,83 @@ func GetOneOnBoardWirelessAdapter(ctx context.Context, id string) *model.OnBoard
 		fmt.Println("error ", err)
 		return nil
 	}
+	return &result
+}
+
+func GetCPUChipsetCollectionName() string {
+	return "CPUChipsetCollection"
+}
+
+func CreateCPUChipset(c *gin.Context) {
+	post := new(model.CPUChipset)
+	if err := c.BindJSON(&post); err != nil {
+		errorCode := http.StatusBadRequest
+		c.JSON(errorCode, response.GetResponseError(errorCode))
+		fmt.Println("BindError CreateCPUChipset", err)
+		return
+	}
+
+	ID := primitive.NewObjectID()
+	postPayload := model.CPUChipset{
+		ID:   ID,
+		Name: post.Name,
+	}
+
+	update := bson.D{{Key: "$set", Value: postPayload}}
+	filter := bson.D{{Key: "name", Value: post.Name}}
+	opts := options.Update().SetUpsert(true)
+
+	code, _, err := CommonCreateCollection(
+		update,
+		filter,
+		opts,
+		GetCPUChipsetCollectionName(),
+	)
+
+	if err != nil {
+		c.JSON(code, response.GetResponseError(code))
+		return
+	}
+	c.JSON(http.StatusCreated, response.GetResponseSuccess(postPayload))
+}
+
+func GetAllCPUChipset(c *gin.Context) {
+	// postId := c.Param("postId")
+
+	code, results, pagination, err := CommonGetAllCollection(bson.D{}, GetCPUChipsetCollectionName())
+
+	fmt.Println("code", code, " _ Reuslts => ", results)
+
+	if err != nil {
+		c.JSON(code, response.GetResponseError(code))
+		return
+	}
+	c.JSON(http.StatusOK, response.GetListResponseSuccess(results, len(results) <= 0, *pagination))
+
+}
+
+func RoutingGetOneCPUChipset(c *gin.Context) {
+	postId := c.Param("Id")
+
+	result := GetOneCPUChipset(postId)
+	if result == nil {
+		errorCode := http.StatusInternalServerError
+		c.JSON(errorCode, response.GetResponseError(errorCode))
+		return
+	}
+	c.JSON(http.StatusOK, response.GetResponseSuccess(result))
+}
+
+func GetOneCPUChipset(id string) *model.CPUChipset {
+	objId, _ := primitive.ObjectIDFromHex(id)
+	_, results, err := CommonGetOneCollection(bson.M{"_id": objId}, GetCPUChipsetCollectionName())
+	if err != nil {
+		return nil
+	}
+
+	var result model.CPUChipset
+	result.ID = results["_id"].(primitive.ObjectID)
+	result.Name = results["name"].(string)
+
 	return &result
 }

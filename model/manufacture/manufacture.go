@@ -7,4 +7,5 @@ type ManufactureData struct {
 	NameManufacture string             `bson:"name_manufacture" json:"name_manufacture"`
 	IsRAM           bool               `bson:"is_ram" json:"is_ram"`
 	IsMotherboard   bool               `bson:"is_motherboard" json:"is_motherboard"`
+	IsCPU           bool               `bson:"is_cpu" json:"is_cpu"`
 }

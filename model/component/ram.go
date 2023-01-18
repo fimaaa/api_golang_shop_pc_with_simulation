@@ -12,25 +12,25 @@ import (
 )
 
 type ComponentRAM struct {
-	ID                  primitive.ObjectID          `bson:"_id" json:"id"`
-	MemoryRAMId         string                      `bson:"memory_ram" json:"-"`
-	MemoryRAMData       MemoryRAM                   `bson:"-" json:"memory_ram"`
-	ModuleSize          int                         `bson:"module_size" json:"module_size"`
-	ModulesQuantity     int                         `bson:"module_quantity" json:"module_quantity"`
-	PrimaryColor        string                      `bson:"color_primary" json:"color_primary"`
-	SecondaryColor      string                      `bson:"color_secondary" json:"color_secondary"`
-	PIN                 string                      `bson:"pin" json:"pin"`
-	Speed               int                         `bson:"speed" json:"speed"`
-	FirstWordLatency    float64                     `bson:"first_word_latency" json:"first_word_latency"`
-	CasLatency          float64                     `bson:"cas_latency" json:"cas_latency"`
-	Voltage             float64                     `bson:"voltage" json:"voltage"`
-	Timing              string                      `bson:"timing" json:"timing"`
-	IsECC               bool                        `bson:"is_ecc" json:"is_ecc"`
-	IsRegistered        bool                        `bson:"is_registered" json:"is_registered"`
-	IsHeatSpreader      bool                        `bson:"is_heat_spreader" json:"is_heat_spreader"`
-	ManufactureId       string                      `bson:"manufacture" json:"-"`
-	ManufactureData     manufacture.ManufactureData `bson:"-" json:"manufacture"`
-	CommonComponentData `bson:"component_data_common" json:"component_data_common"`
+	ID                   primitive.ObjectID          `bson:"_id" json:"id"`
+	MemoryRAMId          string                      `bson:"memory_ram" json:"-"`
+	MemoryRAMData        *MemoryRAM                  `bson:"-" json:"memory_ram"`
+	ModuleSize           int                         `bson:"module_size" json:"module_size"`
+	ModulesQuantity      int                         `bson:"module_quantity" json:"module_quantity"`
+	PrimaryColor         string                      `bson:"color_primary" json:"color_primary"`
+	SecondaryColor       string                      `bson:"color_secondary" json:"color_secondary"`
+	PIN                  string                      `bson:"pin" json:"pin"`
+	Speed                int                         `bson:"speed" json:"speed"`
+	FirstWordLatency     float64                     `bson:"first_word_latency" json:"first_word_latency"`
+	CasLatency           float64                     `bson:"cas_latency" json:"cas_latency"`
+	Voltage              float64                     `bson:"voltage" json:"voltage"`
+	Timing               string                      `bson:"timing" json:"timing"`
+	IsECC                bool                        `bson:"is_ecc" json:"is_ecc"`
+	IsRegistered         bool                        `bson:"is_registered" json:"is_registered"`
+	IsHeatSpreader       bool                        `bson:"is_heat_spreader" json:"is_heat_spreader"`
+	ManufactureId        string                      `bson:"manufacture" json:"-"`
+	ManufactureData      manufacture.ManufactureData `bson:"-" json:"manufacture"`
+	*CommonComponentData `bson:"component_data_common" json:"component_data_common"`
 }
 
 type MemoryRAM struct { // SODIMM - DDR5, DIMM - DDR5, SODIMM - DDR3 , dll
@@ -228,7 +228,7 @@ func MapToComponentRAM(dataMap map[string]interface{}) *ComponentRAM {
 		IsRegistered:        isRegistered,
 		IsHeatSpreader:      isHeatSpreader,
 		ManufactureId:       manufactureId[0],
-		CommonComponentData: postCommonData,
+		CommonComponentData: &postCommonData,
 	}
 	return &postPayload
 }

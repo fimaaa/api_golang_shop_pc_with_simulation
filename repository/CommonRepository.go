@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
@@ -62,12 +63,12 @@ func CommonGetAllCollection(
 	// results []interface{},
 	filter interface{},
 	collectionName string,
-) (int, []interface{}, *response.CommonPagination, error) {
+) (int, []primitive.M, *response.CommonPagination, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	var DB = database.ConnectDB()
 	var postCollection = getcollection.GetCollection(DB, collectionName)
 	// postId := c.Param("postId")
-	var results []interface{}
+	var results []primitive.M
 
 	defer cancel()
 
@@ -79,10 +80,10 @@ func CommonGetAllCollection(
 	}
 	for cur.Next(context.TODO()) {
 		//Create a value into which the single document can be decoded
-		var elem map[string]string
+		var elem primitive.M
 		err := cur.Decode(&elem)
 		if err != nil {
-			fmt.Println("Element Error ", collectionName, " =>", err)
+			fmt.Println("CommonGetAllCollection Element Error ", collectionName, " =>", err)
 		}
 		results = append(results, elem)
 	}
@@ -126,17 +127,16 @@ func CommonCountCollection(
 func CommonGetOneCollection(
 	filter interface{},
 	collectionName string,
-) (int, interface{}, error) {
+) (int, primitive.M, error) {
 	var DB = database.ConnectDB()
 	var postCollection = getcollection.GetCollection(DB, collectionName)
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 
 	defer cancel()
 
-	var result interface{}
+	var result primitive.M
 	err := postCollection.FindOne(ctx, filter).Decode(&result)
 	if err != nil {
-		fmt.Println("Error ", collectionName, " =>", err)
 		errorCode := http.StatusInternalServerError
 		return errorCode, nil, err
 	}
