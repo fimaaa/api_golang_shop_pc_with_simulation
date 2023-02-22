@@ -160,7 +160,7 @@ func CreateComponentCPU(c *gin.Context) {
 func checkingRequestCreateCPU(checking map[string]interface{}) bool {
 	checked, name := helper.CheckingSettingRequest(
 		[]string{
-			"cpu_manufacture",
+			"manufacture",
 			"core_count",
 			"core_cloack_performance",
 			"tdp",

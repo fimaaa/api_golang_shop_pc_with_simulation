@@ -132,3 +132,47 @@ func GetOneComponent(id string) *model.ComponentData {
 
 	return &result
 }
+
+func InitComponentToAdd() {
+	postPayload := model.ComponentData{
+		IdComponent:        primitive.NewObjectID(),
+		NameComponent:      "RAM",
+		OtherNameComponent: "Random Access Memory",
+		MaxComponent:       -1,
+	}
+	AddComponentPCInitial(postPayload)
+	postPayload = model.ComponentData{
+		IdComponent:        primitive.NewObjectID(),
+		NameComponent:      "Motherboard",
+		OtherNameComponent: "Mobo",
+		MaxComponent:       1,
+	}
+	AddComponentPCInitial(postPayload)
+	postPayload = model.ComponentData{
+		IdComponent:        primitive.NewObjectID(),
+		NameComponent:      "CPU",
+		OtherNameComponent: "Central Processing Unit",
+		MaxComponent:       1,
+	}
+	AddComponentPCInitial(postPayload)
+	postPayload = model.ComponentData{
+		IdComponent:        primitive.NewObjectID(),
+		NameComponent:      "VGA",
+		OtherNameComponent: "Graphic Card",
+		MaxComponent:       -1,
+	}
+	AddComponentPCInitial(postPayload)
+}
+
+func AddComponentPCInitial(postPayload model.ComponentData) {
+	var DB = database.ConnectDB()
+	var postCollection = getcollection.GetCollection(DB, GetComponentCollectionName())
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	update := bson.D{{Key: "$set", Value: postPayload}}
+	filter := bson.D{{Key: "component_name", Value: postPayload.NameComponent}}
+	opts := options.Update().SetUpsert(true)
+
+	postCollection.UpdateOne(ctx, filter, update, opts)
+}

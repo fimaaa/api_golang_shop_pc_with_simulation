@@ -6,6 +6,7 @@ import (
 	"other/simulasi_pc/conf"
 	response "other/simulasi_pc/model/common"
 	"other/simulasi_pc/routes"
+	"pc_simulation_api/repository"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
@@ -28,6 +29,9 @@ func settingRouting() {
 	routes.SetRamRoutes(group)
 	routes.SetMotherboardRoutes(group)
 	routes.SetCpuRoutes(group)
+	routes.SetVGARoutes(group)
+
+	repository.InitComponentToAdd()
 
 	r.Run(conf.Configuration().Server.BaseUrl + ":" + strconv.Itoa(conf.Configuration().Server.Port))
 }

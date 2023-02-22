@@ -66,11 +66,6 @@ type FormFactorMotherboard struct { // ATX, ITX, Full ATX, dll
 	Name string             `bson:"name" json:"name"`
 }
 
-type MultiGPU struct { // Crossfire, 2-way SLI, 3-way SLI, 4-way SLI
-	ID   primitive.ObjectID `bson:"_id" json:"id"`
-	Name string             `bson:"name" json:"name"`
-}
-
 type OnBoardWiredAdapter struct { // 1 x 10 Gb/s + 1 x 2.5 Gb/s, 2 x 10 Gb/s + 2 x 1 Gb/s, 1 x 100 Mb/s, dll
 	ID   primitive.ObjectID `bson:"_id" json:"id"`
 	Name string             `bson:"name" json:"name"`

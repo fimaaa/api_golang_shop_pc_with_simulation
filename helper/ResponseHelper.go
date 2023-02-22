@@ -37,10 +37,12 @@ func CheckingSettingRequest(listString []string, listMap map[string]interface{})
 func FormDataToInteger(data interface{}) (int, bool) {
 	dataString, ok := data.([]string)
 	if !ok {
+		PrintCommand("FormDataToInteger err ok => ", ok)
 		return -1, false
 	}
 	resultData, err := strconv.Atoi(dataString[0])
 	if err != nil {
+		PrintCommand("FormDataToInteger err resultData => ", resultData, "- Data => ", data)
 		return -1, false
 	}
 	return resultData, true
